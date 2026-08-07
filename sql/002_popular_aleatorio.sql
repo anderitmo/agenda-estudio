@@ -2,16 +2,32 @@
 -- SCRIPT DE POPULAÇÃO ALEATÓRIA (MOCK DATA)
 -- ==========================================================
 
--- 1. Limpar dados anteriores de reservas e clientes/bandas
--- (Mantém salas e equipamentos criados na migração 001)
+-- 1. Limpar todas as tabelas operacionais e de configuração
 truncate table reserva_ajustes cascade;
 truncate table reserva_equipamentos cascade;
 truncate table reservas cascade;
 truncate table banda_integrantes cascade;
 truncate table bandas cascade;
 truncate table clientes cascade;
+truncate table sala_bloqueios cascade;
+truncate table salas cascade;
+truncate table equipamentos cascade;
 
--- 2. Clientes (Gerar 15 clientes realistas)
+-- 2. Salas (Configuração básica)
+insert into salas (nome, descricao, capacidade, observacoes, duracao_minima_minutos, duracao_maxima_minutos, buffer_minutos)
+values
+  ('Estúdio A', 'Sala Premium com excelente acústica', 6, 'Equipada com bateria Tama e amplificador de guitarra Marshall', 60, 240, 15),
+  ('Estúdio B', 'Sala Standart versátil', 4, 'Equipada com bateria Pearl e amplificador de guitarra Fender', 60, 180, 15);
+
+-- 3. Equipamentos Extras
+insert into equipamentos (nome, quantidade_total)
+values
+  ('Microfone Shure SM58', 5),
+  ('Pedestal de Microfone', 4),
+  ('Cabo XLR 5m', 8),
+  ('Prato de Condução Zildjian 20', 2);
+
+-- 4. Clientes (Gerar 15 clientes realistas)
 insert into clientes (nome, whatsapp, consentimento_dados, anonimizado)
 values
   ('Carlos Alberto', '11988881111', true, false),
@@ -30,7 +46,7 @@ values
   ('Beatriz Costa', '11977774444', true, false),
   ('André Almeida', '11977775555', true, false);
 
--- 3. Bandas (Gerar 6 bandas lideradas por alguns dos clientes acima)
+-- 5. Bandas (Gerar 6 bandas lideradas por alguns dos clientes acima)
 insert into bandas (nome, responsavel_id)
 values
   ('Os Alquimistas', (select id from clientes where whatsapp = '11988881111')),
@@ -40,7 +56,7 @@ values
   ('Metal Core S/A', (select id from clientes where whatsapp = '11988885555')),
   ('Acústico MPB', (select id from clientes where whatsapp = '11988886666'));
 
--- 4. Integrantes (Adicionar múltiplos integrantes a cada banda)
+-- 6. Integrantes (Adicionar múltiplos integrantes a cada banda)
 insert into banda_integrantes (banda_id, cliente_id, ativo)
 values
   -- Os Alquimistas (Carlos Alberto, Juliana Lima, Patrícia Reis)
@@ -63,8 +79,7 @@ values
   ((select id from bandas where nome = 'Gritos Suburbanos'), (select id from clientes where whatsapp = '11977772222'), true),
   ((select id from bandas where nome = 'Gritos Suburbanos'), (select id from clientes where whatsapp = '11977774444'), true);
 
--- 5. Reservas (Popular agendamentos realistas distribuídos no tempo)
--- Geramos reservas de ensaio para as salas Estúdio A e Estúdio B.
+-- 7. Reservas (Popular agendamentos realistas distribuídos no tempo)
 insert into reservas (sala_id, banda_id, criado_por_cliente_id, inicio, fim, status, observacoes)
 values
   -- Reservas Passadas Concluídas (Dias anteriores)
@@ -125,7 +140,7 @@ values
     'Gravação teste.'
   );
 
--- 6. Reserva Equipamentos (Adicionar equipamentos para algumas reservas)
+-- 8. Reserva Equipamentos (Adicionar equipamentos para algumas reservas)
 insert into reserva_equipamentos (reserva_id, equipamento_id, quantidade)
 values
   -- Reserva 1 (Microfones e Cabos)
@@ -151,7 +166,7 @@ values
     1
   );
 
--- 7. Reserva Ajustes (Adicionar uma nota de ajuste a uma reserva concluída)
+-- 9. Reserva Ajustes (Adicionar uma nota de ajuste a uma reserva concluída)
 insert into reserva_ajustes (reserva_id, nota)
 values
   (
