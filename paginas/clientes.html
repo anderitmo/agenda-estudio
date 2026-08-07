@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cadastro de Clientes — Estúdio de Ensaios</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <link rel="stylesheet" href="../css/custom.css">
+</head>
+<body>
+
+  <header class="container">
+    <nav>
+      <ul>
+        <li><strong>Estúdio Ensaios</strong></li>
+      </ul>
+      <ul x-data="{ user: null, role: '' }" x-init="
+        const checkSession = async () => {
+          try {
+            const { sessaoAtual } = await import('../js/auth.js');
+            const session = await sessaoAtual();
+            if (session) {
+              user = session.usuario;
+              role = session.papel;
+            }
+          } catch(e) {}
+        };
+        checkSession();
+        window.addEventListener('auth-changed', checkSession);
+      ">
+        <li><a href="agenda.html">Agenda</a></li>
+        <li><a href="clientes.html">Cadastro Cliente</a></li>
+        <template x-if="role">
+          <li><a href="bandas.html">Bandas</a></li>
+        </template>
+        <template x-if="role === 'administrador'">
+          <li><a href="salas.html">Salas</a></li>
+          <li><a href="equipamentos.html">Equipamentos</a></li>
+        </template>
+        <template x-if="role">
+          <li><a href="historico.html">Histórico & Pesquisa</a></li>
+        </template>
+        <template x-if="user">
+          <li>
+            <button class="outline contrast" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;" @click="
+              const { logout } = await import('../js/auth.js');
+              await logout();
+              window.location.reload();
+            ">Sair (<span x-text="role"></span>)</button>
+          </li>
+        </template>
+        <template x-if="!user">
+          <li>
+            <a href="login.html" role="button" class="outline" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;">Admin Login</a>
+          </li>
+        </template>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    <article x-data="cadastroClienteComponent()" style="max-width: 600px; margin: 0 auto;">
+      <header>
+        <h2>Autoatendimento — Cadastro de Clientes</h2>
+        <p>Cadastre-se antes do seu primeiro ensaio para gerenciar sua banda e agendamentos.</p>
+      </header>
+
+      <div x-show="mensagemSucesso" class="pico-color-green" style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+        <h4 style="color: #15803d; margin-bottom: 0.5rem;">Cadastro Concluído!</h4>
+        <p x-text="mensagemSucesso" style="margin-bottom: 0;"></p>
+        <button class="contrast outline" style="margin-top: 1rem; width: auto;" @click="resetForm()">Cadastrar Outro</button>
+      </div>
+
+      <div x-show="mensagemErro" class="pico-color-red" style="background: #fef2f2; border: 1px solid #fca5a5; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+        <p x-text="mensagemErro" style="color: #991b1b; margin-bottom: 0;"></p>
+      </div>
+
+      <form x-show="!mensagemSucesso" @submit.prevent="submeter()">
+        <label for="nome">
+          Nome Completo
+          <input type="text" id="nome" x-model="form.nome" placeholder="Digite seu nome completo" required>
+        </label>
+
+        <label for="whatsapp">
+          WhatsApp
+          <input type="text" id="whatsapp" x-model="form.whatsapp" @input="formatarTelefone" placeholder="(DD) 99999-9999" required>
+        </label>
+
+        <label for="banda">
+          Nome da Banda
+          <input type="text" id="banda" x-model="form.banda" placeholder="Digite o nome da sua banda" required>
+        </label>
+
+        <label for="consentimento">
+          <input type="checkbox" id="consentimento" x-model="form.consentimento" required>
+          Aceito o consentimento para armazenamento de dados exclusivamente para fins de agendamento e histórico de ensaios.
+        </label>
+
+        <button type="submit" :disabled="carregando">
+          <span x-show="!carregando">Cadastrar</span>
+          <span x-show="carregando">Cadastrando...</span>
+        </button>
+      </form>
+    </article>
+  </main>
+
+  <script src="../js/paginas/clientes.js" type="module"></script>
+  <!-- Alpine.js loaded strictly after the page-specific ESM script registration to prevent any race condition -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</body>
+</html>

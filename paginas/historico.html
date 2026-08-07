@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Histórico & Pesquisa — Estúdio de Ensaios</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <link rel="stylesheet" href="../css/custom.css">
+</head>
+<body x-data="historicoComponent()">
+
+  <header class="container">
+    <nav>
+      <ul>
+        <li><strong>Estúdio Ensaios</strong></li>
+      </ul>
+      <ul>
+        <li><a href="agenda.html">Agenda</a></li>
+        <li><a href="clientes.html">Cadastro Cliente</a></li>
+        <li><a href="bandas.html">Bandas</a></li>
+        <template x-if="role === 'administrador'">
+          <li><a href="salas.html">Salas</a></li>
+          <li><a href="equipamentos.html">Equipamentos</a></li>
+        </template>
+        <li><a href="historico.html">Histórico & Pesquisa</a></li>
+        <li>
+          <button class="outline contrast" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;" @click="sair()">Sair (<span x-text="role"></span>)</button>
+        </li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    <h2>Histórico & Pesquisa de Ensaios</h2>
+    <p>Consulte registros passados, audite transações e pesquise reservas por múltiplos critérios combinados.</p>
+
+    <div x-show="mensagemErro" class="pico-color-red" style="background: #fef2f2; border: 1px solid #fca5a5; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+      <p x-text="mensagemErro" style="color: #991b1b; margin-bottom: 0;"></p>
+    </div>
+
+    <div x-show="mensagemSucesso" class="pico-color-green" style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+      <p x-text="mensagemSucesso" style="color: #15803d; margin-bottom: 0;"></p>
+    </div>
+
+    <!-- TABS -->
+    <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+      <button :class="aba === 'historico' ? 'primary' : 'outline contrast'" @click="aba = 'historico'">Histórico por Cliente/Banda</button>
+      <button :class="aba === 'pesquisa' ? 'primary' : 'outline contrast'" @click="aba = 'pesquisa'">Pesquisa Avançada</button>
+    </div>
+
+    <!-- TAB 1: HISTORY BY CLIENT/BAND -->
+    <div x-show="aba === 'historico'">
+      <div class="grid">
+        <!-- Customer Search -->
+        <article>
+          <header>
+            <h3>Histórico de Clientes</h3>
+          </header>
+          <input type="text" placeholder="Nome ou WhatsApp..." x-model="buscaCliente" @input="buscarClientesNoHist()">
+          <table class="striped" style="font-size: 0.9rem;">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>WhatsApp</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="cli in clientesEncontrados" :key="cli.id">
+                <tr>
+                  <td x-text="cli.nome"></td>
+                  <td x-text="cli.whatsapp"></td>
+                  <td>
+                    <button class="outline" style="padding: 0.15rem 0.35rem; font-size: 0.80rem;" @click="carregarHistoricoCli(cli)">Ver Reservas</button>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </article>
+
+        <!-- Band Search -->
+        <article>
+          <header>
+            <h3>Histórico de Bandas</h3>
+          </header>
+          <input type="text" placeholder="Nome da banda..." x-model="buscaBanda" @input="buscarBandasNoHist()">
+          <table class="striped" style="font-size: 0.9rem;">
+            <thead>
+              <tr>
+                <th>Nome da Banda</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="band in bandasEncontradas" :key="band.id">
+                <tr>
+                  <td x-text="band.nome"></td>
+                  <td>
+                    <button class="outline" style="padding: 0.15rem 0.35rem; font-size: 0.80rem;" @click="carregarHistoricoBand(band)">Ver Reservas</button>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </article>
+      </div>
+
+      <!-- Historical records of selected entity -->
+      <article x-show="historicoTitulo">
+        <header style="display: flex; justify-content: space-between; align-items: center;">
+          <h3 x-text="historicoTitulo"></h3>
+          <template x-if="frequencia90Dias !== null">
+            <p style="margin-bottom: 0;">Frequência (últimos 90 dias): <strong x-text="frequencia90Dias + ' ensaios concluídos'"></strong></p>
+          </template>
+        </header>
+
+        <table class="striped" style="font-size: 0.9rem;">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Horário</th>
+              <th>Sala</th>
+              <th>Banda / Responsável</th>
+              <th>Status</th>
+              <th>Audit Notas</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="res in historicoReservas" :key="res.id">
+              <tr>
+                <td x-text="formatarData(res.inicio)"></td>
+                <td x-text="formatarHora(res.inicio, res.fim)"></td>
+                <td x-text="res.salas.nome"></td>
+                <td>
+                  <span x-text="res.bandas ? res.bandas.nome : (res.clientes ? res.clientes.nome : '')"></span>
+                </td>
+                <td>
+                  <span class="badge" x-text="res.status" :style="'padding: 0.15rem 0.35rem; border-radius: 4px; font-size: 0.75rem; color: #fff; background:' + getStatusColor(res.status)"></span>
+                </td>
+                <td>
+                  <!-- Mini note logs -->
+                  <div style="font-size: 0.8rem; max-height: 80px; overflow-y: auto;">
+                    <template x-for="not in res.ajustes">
+                      <div style="border-bottom: 1px solid #e2e8f0; padding: 0.25rem 0;">
+                        <em x-text="formatarDataCompleta(not.criado_em)"></em>: <span x-text="not.nota"></span>
+                      </div>
+                    </template>
+                  </div>
+                </td>
+                <td>
+                  <button x-show="res.status === 'concluida'" class="outline secondary" style="padding: 0.15rem 0.35rem; font-size: 0.75rem;" @click="prepararNotaAjuste(res)">Adicionar Nota</button>
+                  <span x-show="res.status !== 'concluida'" style="font-size: 0.75rem; color: #999;">Apenas concluídas</span>
+                </td>
+              </tr>
+            </template>
+            <template x-if="historicoReservas.length === 0">
+              <tr>
+                <td colspan="7" style="text-align: center; color: #999;">Nenhuma reserva encontrada para este cliente/banda.</td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </article>
+    </div>
+
+    <!-- TAB 2: ADVANCED MULTI-CRITERIA SEARCH -->
+    <div x-show="aba === 'pesquisa'">
+      <article>
+        <header>
+          <h3>Pesquisa Avançada</h3>
+        </header>
+
+        <form @submit.prevent="executarBuscaAvancada()">
+          <div class="grid">
+            <label for="filt-cli">
+              Nome do Cliente
+              <input type="text" id="filt-cli" x-model="filtros.clienteNome" placeholder="Ex: João">
+            </label>
+            <label for="filt-wa">
+              WhatsApp (parcial)
+              <input type="text" id="filt-wa" x-model="filtros.whatsapp" placeholder="Ex: 11999">
+            </label>
+            <label for="filt-band">
+              Nome da Banda
+              <input type="text" id="filt-band" x-model="filtros.bandaNome" placeholder="Ex: Rock">
+            </label>
+          </div>
+
+          <div class="grid">
+            <label for="filt-de">
+              De
+              <input type="date" id="filt-de" x-model="filtros.dataInicio">
+            </label>
+            <label for="filt-ate">
+              Até
+              <input type="date" id="filt-ate" x-model="filtros.dataFim">
+            </label>
+            <label for="filt-sala">
+              Sala
+              <select id="filt-sala" x-model="filtros.salaId">
+                <option value="">-- Todas as salas --</option>
+                <template x-for="s in salas" :key="s.id">
+                  <option :value="s.id" x-text="s.nome"></option>
+                </template>
+              </select>
+            </label>
+            <label for="filt-status">
+              Status
+              <select id="filt-status" x-model="filtros.status">
+                <option value="">-- Todos os status --</option>
+                <option value="confirmada">Confirmada</option>
+                <option value="cancelada">Cancelada</option>
+                <option value="remarcada">Remarcada</option>
+                <option value="concluida">Concluída</option>
+                <option value="nao_compareceu">Não Compareceu</option>
+              </select>
+            </label>
+          </div>
+
+          <button type="submit">Buscar Reservas</button>
+        </form>
+
+        <hr>
+
+        <h4>Resultados da Pesquisa</h4>
+        <table class="striped" style="font-size: 0.9rem;">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Horário</th>
+              <th>Sala</th>
+              <th>Banda</th>
+              <th>Responsável</th>
+              <th>WhatsApp</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="res in resultadosPesquisa" :key="res.id">
+              <tr>
+                <td x-text="formatarData(res.inicio)"></td>
+                <td x-text="formatarHora(res.inicio, res.fim)"></td>
+                <td x-text="res.salas ? res.salas.nome : ''"></td>
+                <td x-text="res.bandas ? res.bandas.nome : ''"></td>
+                <td x-text="res.clientes ? res.clientes.nome : ''"></td>
+                <td x-text="res.clientes ? res.clientes.whatsapp : ''"></td>
+                <td>
+                  <span class="badge" x-text="res.status" :style="'padding: 0.15rem 0.35rem; border-radius: 4px; font-size: 0.75rem; color: #fff; background:' + getStatusColor(res.status)"></span>
+                </td>
+              </tr>
+            </template>
+            <template x-if="resultadosPesquisa.length === 0">
+              <tr>
+                <td colspan="7" style="text-align: center; color: #999;">Nenhum resultado corresponde aos filtros informados.</td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </article>
+    </div>
+
+    <!-- Auditing Adjustment Note Modal -->
+    <template x-if="ajusteModalAberto">
+      <div class="modal-backdrop">
+        <div class="modal-content" style="max-width: 500px;">
+          <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3>Adicionar Nota à Reserva Concluída</h3>
+            <button class="contrast outline" style="padding: 0.25rem 0.5rem; font-size: 0.85rem; width: auto;" @click="fecharAjusteModal()">X</button>
+          </header>
+
+          <form @submit.prevent="salvarNotaAjuste()">
+            <label for="not-texto">
+              Nota Descritiva *
+              <textarea id="not-texto" x-model="ajusteForm.nota" placeholder="Ex: Quebrou prato de condução, pago multa de R$ 50..." required></textarea>
+            </label>
+            <button type="submit">Adicionar Nota</button>
+          </form>
+        </div>
+      </div>
+    </template>
+
+  </main>
+
+  <script src="../js/paginas/historico.js" type="module"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</body>
+</html>

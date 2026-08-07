@@ -1,0 +1,59 @@
+:root {
+  --pico-font-size: 100%;
+}
+
+body.light-theme {
+  --pico-background-color: #ffffff;
+  --pico-color: #333333;
+}
+
+/* Event classes for FullCalendar */
+.fc-event-booking {
+  background-color: #3b82f6 !important; /* Soft blue */
+  border-color: #2563eb !important;
+  color: #ffffff !important;
+  cursor: pointer;
+}
+
+.fc-event-block {
+  background: repeating-linear-gradient(
+    45deg,
+    #ef4444,
+    #ef4444 10px,
+    #dc2626 10px,
+    #dc2626 20px
+  ) !important; /* Red stripes */
+  border-color: #b91c1c !important;
+  color: #ffffff !important;
+  cursor: not-allowed;
+}
+
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: #ffffff;
+  padding: 1.5rem;
+  border-radius: 8px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.equipment-badge-unavailable {
+  color: #ef4444;
+  font-weight: bold;
+  font-size: 0.85rem;
+  margin-left: 0.5rem;
+}
