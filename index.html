@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Estúdio de Ensaios — Sistema de Agendamento</title>
+
+  <!-- Pico.css v2 via CDN -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/custom.css">
+
+  <!-- Day.js via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/relativeTime.js"></script>
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      if (typeof dayjs !== 'undefined' && dayjs.extend) {
+        dayjs.extend(window.dayjs_plugin_relativeTime);
+      }
+    });
+  </script>
+
+  <!-- Alpine.js via CDN (with defer) -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="light-theme">
+
+  <header class="container">
+    <nav>
+      <ul>
+        <li><strong>Estúdio Ensaios</strong></li>
+      </ul>
+      <ul x-data="{ user: null, role: '' }" x-init="
+        const checkSession = async () => {
+          try {
+            const { sessaoAtual } = await import('./js/auth.js');
+            const session = await sessaoAtual();
+            if (session) {
+              user = session.usuario;
+              role = session.papel;
+            }
+          } catch(e) {}
+        };
+        checkSession();
+        window.addEventListener('auth-changed', checkSession);
+      ">
+        <li><a href="index.html">Agenda</a></li>
+        <li><a href="paginas/clientes.html">Cadastro Cliente</a></li>
+        <template x-if="role">
+          <li><a href="paginas/bandas.html">Bandas</a></li>
+        </template>
+        <template x-if="role === 'administrador'">
+          <li><a href="paginas/salas.html">Salas</a></li>
+          <li><a href="paginas/equipamentos.html">Equipamentos</a></li>
+        </template>
+        <template x-if="role">
+          <li><a href="paginas/historico.html">Histórico & Pesquisa</a></li>
+        </template>
+        <template x-if="user">
+          <li>
+            <button class="outline contrast" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;" @click="
+              const { logout } = await import('./js/auth.js');
+              await logout();
+              window.location.reload();
+            ">Sair (<span x-text="role"></span>)</button>
+          </li>
+        </template>
+        <template x-if="!user">
+          <li>
+            <a href="paginas/login.html" role="button" class="outline" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;">Admin Login</a>
+          </li>
+        </template>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container" id="app-container">
+    <div x-data="{}" x-init="window.location.replace('paginas/agenda.html')">
+      <p>Carregando sistema de agendamento...</p>
+    </div>
+  </main>
+
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login Administrativo — Estúdio de Ensaios</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <link rel="stylesheet" href="../css/custom.css">
+</head>
+<body>
+
+  <header class="container">
+    <nav>
+      <ul>
+        <li><strong>Estúdio Ensaios</strong></li>
+      </ul>
+      <ul>
+        <li><a href="agenda.html">Agenda</a></li>
+        <li><a href="clientes.html">Cadastro Cliente</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container" style="max-width: 450px; margin-top: 3rem;">
+    <article x-data="loginComponent()">
+      <header>
+        <h3>Login do Painel Administrativo</h3>
+        <p>Acesse com suas credenciais para gerenciar salas, bloqueios, estoque e histórico.</p>
+      </header>
+
+      <div x-show="mensagemErro" class="pico-color-red" style="background: #fef2f2; border: 1px solid #fca5a5; padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem; color: #991b1b; font-size: 0.9rem;">
+        <p x-text="mensagemErro" style="margin-bottom: 0;"></p>
+      </div>
+
+      <form @submit.prevent="executarLogin()">
+        <label for="log-email">
+          E-mail Corporativo
+          <input type="email" id="log-email" x-model="form.email" placeholder="admin@estudio.com" required>
+        </label>
+
+        <label for="log-senha">
+          Senha
+          <input type="password" id="log-senha" x-model="form.senha" placeholder="••••••••" required>
+        </label>
+
+        <button type="submit" :disabled="carregando">
+          <span x-show="!carregando">Entrar</span>
+          <span x-show="carregando">Entrando...</span>
+        </button>
+      </form>
+    </article>
+  </main>
+
+  <script src="../js/paginas/login.js" type="module"></script>
+  <!-- Alpine.js loaded strictly after the page-specific ESM script registration to prevent any race condition -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</body>
+</html>

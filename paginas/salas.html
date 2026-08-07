@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gerenciamento de Salas — Estúdio de Ensaios</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <link rel="stylesheet" href="../css/custom.css">
+</head>
+<body x-data="salasComponent()">
+
+  <header class="container">
+    <nav>
+      <ul>
+        <li><strong>Estúdio Ensaios</strong></li>
+      </ul>
+      <ul>
+        <li><a href="agenda.html">Agenda</a></li>
+        <li><a href="clientes.html">Cadastro Cliente</a></li>
+        <li><a href="bandas.html">Bandas</a></li>
+        <li><a href="salas.html">Salas</a></li>
+        <li><a href="equipamentos.html">Equipamentos</a></li>
+        <li><a href="historico.html">Histórico & Pesquisa</a></li>
+        <li>
+          <button class="outline contrast" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;" @click="sair()">Sair (<span x-text="role"></span>)</button>
+        </li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    <h2>Gerenciamento de Salas e Bloqueios Administrativos</h2>
+    <p>Configure parâmetros de agendamento de cada sala e administre bloqueios de manutenção.</p>
+
+    <div x-show="mensagemErro" class="pico-color-red" style="background: #fef2f2; border: 1px solid #fca5a5; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+      <p x-text="mensagemErro" style="color: #991b1b; margin-bottom: 0;"></p>
+    </div>
+
+    <div x-show="mensagemSucesso" class="pico-color-green" style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+      <p x-text="mensagemSucesso" style="color: #15803d; margin-bottom: 0;"></p>
+    </div>
+
+    <div class="grid">
+      <!-- Left side: Salas list and edit -->
+      <section>
+        <article>
+          <header>
+            <h3>Salas Cadastradas</h3>
+          </header>
+
+          <table class="striped">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Capacidade</th>
+                <th>Buffer (m)</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="sala in salas" :key="sala.id">
+                <tr :class="{'selected': selecionada && selecionada.id === sala.id}">
+                  <td x-text="sala.nome"></td>
+                  <td x-text="sala.capacidade"></td>
+                  <td x-text="sala.buffer_minutos"></td>
+                  <td>
+                    <span x-show="sala.ativa" class="badge" style="background: #10b981; color: #fff; padding: 0.15rem 0.35rem; border-radius: 4px; font-size: 0.75rem;">Ativa</span>
+                    <span x-show="!sala.ativa" class="badge" style="background: #ef4444; color: #fff; padding: 0.15rem 0.35rem; border-radius: 4px; font-size: 0.75rem;">Inativa</span>
+                  </td>
+                  <td>
+                    <button class="outline" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;" @click="selecionarSala(sala)">Gerenciar</button>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+
+          <hr>
+
+          <h4>Nova Sala / Editar Selecionada</h4>
+          <form @submit.prevent="salvarSala()">
+            <label for="sala-nome">
+              Nome da Sala
+              <input type="text" id="sala-nome" x-model="formSala.nome" placeholder="Ex: Sala Premium" required>
+            </label>
+
+            <label for="sala-descricao">
+              Descrição
+              <input type="text" id="sala-descricao" x-model="formSala.descricao" placeholder="Ex: Isolamento acústico reforçado">
+            </label>
+
+            <div class="grid">
+              <label for="sala-capacidade">
+                Capacidade (pessoas)
+                <input type="number" id="sala-capacidade" x-model.number="formSala.capacidade" required>
+              </label>
+              <label for="sala-buffer">
+                Buffer entre sessões (minutos)
+                <input type="number" id="sala-buffer" x-model.number="formSala.buffer_minutos" required>
+              </label>
+            </div>
+
+            <div class="grid">
+              <label for="sala-min">
+                Duração Mínima (minutos)
+                <input type="number" id="sala-min" x-model.number="formSala.duracao_minima_minutos" required>
+              </label>
+              <label for="sala-max">
+                Duração Máxima (minutos)
+                <input type="number" id="sala-max" x-model.number="formSala.duracao_maxima_minutos" required>
+              </label>
+            </div>
+
+            <label for="sala-obs">
+              Observações Internas
+              <textarea id="sala-obs" x-model="formSala.observacoes" placeholder="Ex: Possui mesa de som XR18"></textarea>
+            </label>
+
+            <label for="sala-ativa">
+              <input type="checkbox" id="sala-ativa" x-model="formSala.ativa"> Sala Ativa para Reservas
+            </label>
+
+            <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+              <button type="submit">Salvar</button>
+              <button type="button" class="contrast outline" x-show="selecionada" @click="resetFormSala()">Cancelar Edição</button>
+            </div>
+          </form>
+        </article>
+      </section>
+
+      <!-- Right side: Bloqueios Administrativos list and create -->
+      <section x-show="selecionada">
+        <article>
+          <header>
+            <h3 x-text="'Bloqueios: ' + selecionada.nome"></h3>
+          </header>
+
+          <h4>Próximos Bloqueios</h4>
+          <table class="striped">
+            <thead>
+              <tr>
+                <th>Início</th>
+                <th>Fim</th>
+                <th>Motivo</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="bloq in bloqueios" :key="bloq.id">
+                <tr>
+                  <td x-text="formatarData(bloq.inicio)"></td>
+                  <td x-text="formatarData(bloq.fim)"></td>
+                  <td x-text="bloq.motivo || 'Sem motivo'"></td>
+                  <td>
+                    <button class="outline secondary" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;" @click="removerBloq(bloq.id)">Remover</button>
+                  </td>
+                </tr>
+              </template>
+              <template x-if="bloqueios.length === 0">
+                <tr>
+                  <td colspan="4" style="text-align: center; color: #999;">Nenhum bloqueio administrativo futuro cadastrado.</td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+
+          <hr>
+
+          <h4>Adicionar Bloqueio Administrativo</h4>
+          <form @submit.prevent="salvarBloqueio()">
+            <div class="grid">
+              <label for="bloq-inicio">
+                Data/Hora Início
+                <input type="datetime-local" id="bloq-inicio" x-model="formBloq.inicio" required>
+              </label>
+              <label for="bloq-fim">
+                Data/Hora Fim
+                <input type="datetime-local" id="bloq-fim" x-model="formBloq.fim" required>
+              </label>
+            </div>
+
+            <label for="bloq-motivo">
+              Motivo do Bloqueio
+              <input type="text" id="bloq-motivo" x-model="formBloq.motivo" placeholder="Ex: Manutenção de ar condicionado, Faxina pesada..." required>
+            </label>
+
+            <button type="submit" class="outline">Criar Bloqueio</button>
+          </form>
+        </article>
+      </section>
+    </div>
+  </main>
+
+  <script src="../js/paginas/salas.js" type="module"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</body>
+</html>

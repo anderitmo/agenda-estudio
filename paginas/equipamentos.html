@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gerenciamento de Equipamentos — Estúdio de Ensaios</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <link rel="stylesheet" href="../css/custom.css">
+</head>
+<body x-data="equipamentosComponent()">
+
+  <header class="container">
+    <nav>
+      <ul>
+        <li><strong>Estúdio Ensaios</strong></li>
+      </ul>
+      <ul>
+        <li><a href="agenda.html">Agenda</a></li>
+        <li><a href="clientes.html">Cadastro Cliente</a></li>
+        <li><a href="bandas.html">Bandas</a></li>
+        <li><a href="salas.html">Salas</a></li>
+        <li><a href="equipamentos.html">Equipamentos</a></li>
+        <li><a href="historico.html">Histórico & Pesquisa</a></li>
+        <li>
+          <button class="outline contrast" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;" @click="sair()">Sair (<span x-text="role"></span>)</button>
+        </li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container" style="max-width: 800px;">
+    <h2>Gerenciamento do Estoque de Equipamentos Extras</h2>
+    <p>Cadastre e ajuste o estoque físico total de equipamentos disponíveis para locação compartilhada.</p>
+
+    <div x-show="mensagemErro" class="pico-color-red" style="background: #fef2f2; border: 1px solid #fca5a5; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+      <p x-text="mensagemErro" style="color: #991b1b; margin-bottom: 0;"></p>
+    </div>
+
+    <div x-show="mensagemSucesso" class="pico-color-green" style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+      <p x-text="mensagemSucesso" style="color: #15803d; margin-bottom: 0;"></p>
+    </div>
+
+    <div class="grid">
+      <!-- Left: List -->
+      <section>
+        <article>
+          <header>
+            <h3>Estoque Físico</h3>
+          </header>
+
+          <table class="striped">
+            <thead>
+              <tr>
+                <th>Equipamento</th>
+                <th>Quantidade Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="eq in equipamentos" :key="eq.id">
+                <tr>
+                  <td x-text="eq.nome"></td>
+                  <td x-text="eq.quantidade_total"></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </article>
+      </section>
+
+      <!-- Right: Form -->
+      <section>
+        <article>
+          <header>
+            <h3>Cadastrar Equipamento</h3>
+          </header>
+
+          <form @submit.prevent="salvarEquipamento()">
+            <label for="eq-nome">
+              Nome do Equipamento
+              <input type="text" id="eq-nome" x-model="form.nome" placeholder="Ex: Pedal de Bumbo Duplo" required>
+            </label>
+
+            <label for="eq-qtd">
+              Quantidade Total em Estoque
+              <input type="number" id="eq-qtd" x-model.number="form.quantidadeTotal" placeholder="Ex: 3" required>
+            </label>
+
+            <button type="submit">Adicionar Equipamento</button>
+          </form>
+        </article>
+      </section>
+    </div>
+  </main>
+
+  <script src="../js/paginas/equipamentos.js" type="module"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</body>
+</html>

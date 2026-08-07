@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gerenciamento de Bandas — Estúdio de Ensaios</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <link rel="stylesheet" href="../css/custom.css">
+</head>
+<body x-data="bandasComponent()">
+
+  <header class="container">
+    <nav>
+      <ul>
+        <li><strong>Estúdio Ensaios</strong></li>
+      </ul>
+      <ul>
+        <li><a href="agenda.html">Agenda</a></li>
+        <li><a href="clientes.html">Cadastro Cliente</a></li>
+        <li><a href="bandas.html">Bandas</a></li>
+        <template x-if="role === 'administrador'">
+          <li><a href="salas.html">Salas</a></li>
+          <li><a href="equipamentos.html">Equipamentos</a></li>
+        </template>
+        <li><a href="historico.html">Histórico & Pesquisa</a></li>
+        <li>
+          <button class="outline contrast" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;" @click="sair()">Sair (<span x-text="role"></span>)</button>
+        </li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    <h2>Painel Administrativo — Bandas</h2>
+    <p>Visualize e gerencie bandas, adicione integrantes e transfira responsabilidade técnica.</p>
+
+    <div x-show="mensagemErro" class="pico-color-red" style="background: #fef2f2; border: 1px solid #fca5a5; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+      <p x-text="mensagemErro" style="color: #991b1b; margin-bottom: 0;"></p>
+    </div>
+
+    <div x-show="mensagemSucesso" class="pico-color-green" style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+      <p x-text="mensagemSucesso" style="color: #15803d; margin-bottom: 0;"></p>
+    </div>
+
+    <div class="grid">
+      <!-- Left side: List of bands -->
+      <section>
+        <article>
+          <header>
+            <input type="search" placeholder="Buscar banda pelo nome..." x-model="buscaBanda" @input="filtrarBandas()">
+          </header>
+
+          <table class="striped">
+            <thead>
+              <tr>
+                <th>Nome da Banda</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="banda in bandasFiltradas" :key="banda.id">
+                <tr :class="{'selected': selecionada && selecionada.id === banda.id}">
+                  <td x-text="banda.nome"></td>
+                  <td>
+                    <button class="outline" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;" @click="selecionarBanda(banda)">Gerenciar</button>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </article>
+      </section>
+
+      <!-- Right side: Band details and Integrantes -->
+      <section x-show="selecionada">
+        <article>
+          <header>
+            <h3 x-text="'Banda: ' + selecionada.nome"></h3>
+            <p>Responsável Técnico: <strong x-text="responsavelNome"></strong></p>
+          </header>
+
+          <h4>Integrantes Ativos</h4>
+          <table class="striped">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>WhatsApp</th>
+                <th>Papel</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="int in integrantes" :key="int.id">
+                <tr>
+                  <td x-text="int.clientes.nome"></td>
+                  <td x-text="int.clientes.whatsapp"></td>
+                  <td>
+                    <span x-show="int.clientes.id === selecionada.responsavel_id" class="badge" style="background: #10b981; color: #fff; padding: 0.15rem 0.35rem; border-radius: 4px; font-size: 0.75rem;">Responsável</span>
+                    <span x-show="int.clientes.id !== selecionada.responsavel_id" class="badge" style="background: #6b7280; color: #fff; padding: 0.15rem 0.35rem; border-radius: 4px; font-size: 0.75rem;">Integrante</span>
+                  </td>
+                  <td>
+                    <div style="display: flex; gap: 0.25rem;">
+                      <button x-show="int.clientes.id !== selecionada.responsavel_id" class="outline contrast" style="padding: 0.15rem 0.35rem; font-size: 0.75rem;" @click="tornarResponsavel(int.clientes.id)">Tornar Responsável</button>
+                      <button x-show="int.clientes.id !== selecionada.responsavel_id" class="outline secondary" style="padding: 0.15rem 0.35rem; font-size: 0.75rem;" @click="remover(int.clientes.id)">Remover</button>
+                      <span x-show="int.clientes.id === selecionada.responsavel_id" style="font-size: 0.75rem; color: #999;">Bloqueado</span>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+
+          <hr>
+
+          <h4>Adicionar Integrante</h4>
+          <form @submit.prevent="adicionarNovoIntegrante()">
+            <label for="new-member-wa">
+              WhatsApp do Cliente
+              <input type="text" id="new-member-wa" x-model="novoIntegranteWA" placeholder="Digite apenas os números com DDD" required>
+            </label>
+            <button type="submit" class="outline">Adicionar</button>
+          </form>
+        </article>
+      </section>
+    </div>
+  </main>
+
+  <script src="../js/paginas/bandas.js" type="module"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</body>
+</html>
