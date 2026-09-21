@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="refresh" content="0;url=paginas/agenda.html">
   <title>Estúdio de Ensaios — Sistema de Agendamento</title>
 
   <!-- Pico.css v2 via CDN -->
@@ -14,19 +13,14 @@
 
   <!-- Day.js via CDN -->
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/relativeTime.js"></script>
-  <script>
-    window.addEventListener('DOMContentLoaded', () => {
-      if (typeof dayjs !== 'undefined' && dayjs.extend) {
-        dayjs.extend(window.dayjs_plugin_relativeTime);
-      }
-    });
-  </script>
 
-  <!-- Alpine.js via CDN (with defer) -->
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <!-- FullCalendar Core and Plugins via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+
+  <!-- Supabase Legacy compatibility module -->
+  <script type="module" src="./supabase.js"></script>
 </head>
-<body class="light-theme">
+<body x-data="agendaComponent()">
 
   <header class="container">
     <nav>
@@ -77,11 +71,243 @@
     </nav>
   </header>
 
-  <main class="container" id="app-container">
-    <div x-data="{}" x-init="window.location.replace('paginas/agenda.html')">
-      <p>Carregando sistema de agendamento...</p>
+  <main class="container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+      <div>
+        <h2>Grade de Agendamentos</h2>
+        <p>Selecione um dia livre para criar uma reserva ou clique em um ensaio para gerenciar.</p>
+      </div>
+      <div>
+        <button class="primary" @click="abrirNovoAgendamento()">Novo Agendamento</button>
+      </div>
     </div>
+
+    <!-- Alert for general errors -->
+    <div x-show="mensagemErro" class="pico-color-red" style="background: #fef2f2; border: 1px solid #fca5a5; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+      <p x-text="mensagemErro" style="color: #991b1b; margin-bottom: 0;"></p>
+    </div>
+
+    <div x-show="mensagemSucesso" class="pico-color-green" style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+      <p x-text="mensagemSucesso" style="color: #15803d; margin-bottom: 0;"></p>
+    </div>
+
+    <!-- Calendar Mount Node with x-ignore to prevent Alpine DOM clashing -->
+    <div id="calendar-container" style="background: #ffffff; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0; color: #333333;">
+      <div id="calendar" x-ignore></div>
+    </div>
+
+    <!-- Reservation Step Form / Details Modal -->
+    <template x-if="modalAberto">
+      <div class="modal-backdrop">
+        <div class="modal-content">
+          <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3 x-text="modalTitulo"></h3>
+            <button class="contrast outline" style="padding: 0.25rem 0.5rem; font-size: 0.85rem; width: auto;" @click="fecharModal()">X</button>
+          </header>
+
+          <div x-show="modalErro" class="pico-color-red" style="background: #fef2f2; border: 1px solid #fca5a5; padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem; color: #991b1b; font-size: 0.9rem;">
+            <p x-text="modalErro" style="margin-bottom: 0;"></p>
+          </div>
+
+          <!-- DETAIL VIEW (Existing Booking) -->
+          <div x-show="viewMode === 'detalhes'">
+            <p>Sala: <strong x-text="detalheReserva.salaNome"></strong></p>
+            <p>Banda: <strong x-text="detalheReserva.bandaNome"></strong></p>
+            <p>Cliente Responsável: <strong x-text="detalheReserva.clienteNome"></strong> (<span x-text="detalheReserva.clienteFormatado"></span>)</p>
+            <p>Horário: <strong x-text="detalheReserva.horarioFormatado"></strong></p>
+            <p>Status: <span class="badge" x-text="detalheReserva.status" style="background: #3b82f6; color: #fff; padding: 0.15rem 0.35rem; border-radius: 4px; font-size: 0.75rem;"></span></p>
+            <p x-show="detalheReserva.observacoes">Observações: <span x-text="detalheReserva.observacoes"></span></p>
+
+            <template x-if="detalheReserva.equipamentos && detalheReserva.equipamentos.length > 0">
+              <div>
+                <h5>Equipamentos Reservados</h5>
+                <ul>
+                  <template x-for="eq in detalheReserva.equipamentos">
+                    <li><span x-text="eq.equipamentos.nome"></span> (Qtd: <span x-text="eq.quantidade"></span>)</li>
+                  </template>
+                </ul>
+              </div>
+            </template>
+
+            <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
+              <button class="outline" @click="mudarParaRemarcar()">Remarcar Horário</button>
+              <button class="outline secondary" @click="mudarParaCancelar()">Cancelar Reserva</button>
+            </div>
+          </div>
+
+          <!-- CANCEL VIEW -->
+          <div x-show="viewMode === 'cancelar'">
+            <form @submit.prevent="submeterCancelamento()">
+              <label for="canc-motivo">
+                Motivo do Cancelamento *
+                <input type="text" id="canc-motivo" x-model="cancelForm.motivo" placeholder="Ex: Problema de saúde do baterista..." required>
+              </label>
+              <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                <button type="submit" class="secondary">Confirmar Cancelamento</button>
+                <button type="button" class="contrast outline" @click="mudarParaDetalhes()">Voltar</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- BOOKING / REMARCAR VIEW -->
+          <div x-show="viewMode === 'criar' || viewMode === 'remarcar'">
+            <form @submit.prevent="confirmarReservaCompleta()">
+
+              <!-- STEP 1: Date and Room -->
+              <div class="grid">
+                <label for="res-data">
+                  Data
+                  <input type="date" id="res-data" x-model="reservaForm.data" @change="atualizarEquipamentosDisponiveis()" required>
+                </label>
+                <label for="res-sala">
+                  Sala
+                  <select id="res-sala" x-model="reservaForm.salaId" @change="atualizarEquipamentosDisponiveis()" required>
+                    <template x-for="s in salas" :key="s.id">
+                      <option :value="s.id" x-text="s.nome"></option>
+                    </template>
+                  </select>
+                </label>
+              </div>
+
+              <!-- STEP 2: Times -->
+              <div class="grid">
+                <label for="res-inicio">
+                  Hora Início
+                  <input type="time" id="res-inicio" x-model="reservaForm.horaInicio" @change="atualizarEquipamentosDisponiveis()" required>
+                </label>
+                <label for="res-fim">
+                  Hora Fim
+                  <input type="time" id="res-fim" x-model="reservaForm.horaFim" @change="atualizarEquipamentosDisponiveis()" required>
+                </label>
+              </div>
+
+              <!-- STEP 3: Client search or register -->
+              <div x-show="viewMode === 'criar'">
+                <label for="client-search-wa">
+                  WhatsApp do Responsável *
+                  <div style="display: flex; gap: 0.5rem;">
+                    <input type="text" id="client-search-wa" x-model="clienteBuscaWA" placeholder="Digite apenas números com DDD">
+                    <button type="button" style="width: auto;" @click="buscarCliente()">Buscar</button>
+                  </div>
+                </label>
+
+                <div x-show="clienteSelecionado" style="background: #f8fafc; padding: 0.75rem; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 1rem;">
+                  <p style="margin-bottom: 0;">Responsável: <strong x-text="clienteSelecionado.nome"></strong></p>
+                  <p style="margin-bottom: 0;">WhatsApp: <span x-text="clienteSelecionado.whatsapp"></span></p>
+                </div>
+
+                <div x-show="!clienteSelecionado && clienteBuscado" style="margin-bottom: 1rem;">
+                  <p style="color: #ef4444; font-size: 0.9rem; margin-bottom: 0.5rem;">Responsável não encontrado!</p>
+                  <button type="button" class="contrast outline" @click="abrirAutoRegModal()">Cadastrar Novo Cliente</button>
+                </div>
+
+                <!-- STEP 4: Band selection/dropdown -->
+                <div x-show="clienteSelecionado">
+                  <label for="res-banda">
+                    Selecione a Banda *
+                    <select id="res-banda" x-model="reservaForm.bandaId" required>
+                      <option value="">-- Selecione uma banda --</option>
+                      <template x-for="b in bandasDoCliente" :key="b.id">
+                        <option :value="b.id" x-text="b.nome"></option>
+                      </template>
+                    </select>
+                  </label>
+                </div>
+              </div>
+
+              <!-- STEP 5: Equipments list with availability checks -->
+              <div>
+                <h5>Equipamentos Extras Disponíveis</h5>
+                <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 0.5rem;">Os equipamentos extras abaixo são compartilhados por todas as salas.</p>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 200px; overflow-y: auto; padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 6px;">
+                  <template x-for="eq in equipamentosDisponiveis" :key="eq.id">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                      <label style="margin-bottom: 0; display: flex; align-items: center;">
+                        <input type="checkbox" :disabled="eq.quantidade_disponivel === 0" :value="eq.id" x-model="reservaForm.equipamentosSelecionadosIds" style="margin-right: 0.5rem;">
+                        <span x-text="eq.nome"></span>
+                        <template x-if="eq.quantidade_disponivel === 0">
+                          <span class="equipment-badge-unavailable">Indisponível neste horário</span>
+                        </template>
+                        <template x-if="eq.quantidade_disponivel > 0">
+                          <span style="font-size: 0.8rem; color: #6b7280; margin-left: 0.5rem;" x-text="'(Estoque: ' + eq.quantidade_disponivel + ')'"></span>
+                        </template>
+                      </label>
+                      <input type="number" min="1" :max="eq.quantidade_disponivel" x-show="reservaForm.equipamentosSelecionadosIds.includes(eq.id)" x-model.number="reservaForm.equipamentosQuantidades[eq.id]" style="width: 70px; margin-bottom: 0; padding: 0.25rem;" required>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <!-- STEP 6: Notes -->
+              <label for="res-obs" style="margin-top: 1rem;">
+                Observações
+                <textarea id="res-obs" x-model="reservaForm.observacoes" placeholder="Ex: Trazer amplificador de guitarra próprio..."></textarea>
+              </label>
+
+              <!-- STEP 7, 8, 9: Confirm & Create -->
+              <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
+                <button type="submit" :disabled="salvandoReserva">
+                  <span x-show="!salvandoReserva">Confirmar Agendamento</span>
+                  <span x-show="salvandoReserva">Validando & Gravando...</span>
+                </button>
+                <button type="button" class="contrast outline" @click="fecharModal()">Cancelar</button>
+              </div>
+
+            </form>
+          </div>
+
+        </div>
+      </div>
+    </template>
+
+    <!-- Nested Client Register Modal -->
+    <template x-if="autoRegModalAberto">
+      <div class="modal-backdrop" style="z-index: 1100;">
+        <div class="modal-content" style="max-width: 500px;">
+          <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3>Cadastrar Novo Cliente</h3>
+            <button class="contrast outline" style="padding: 0.25rem 0.5rem; font-size: 0.85rem; width: auto;" @click="fecharAutoRegModal()">X</button>
+          </header>
+
+          <form @submit.prevent="salvarNovoClienteCompleto()">
+            <label for="reg-nome">
+              Nome Completo
+              <input type="text" id="reg-nome" x-model="regForm.nome" required>
+            </label>
+            <label for="reg-wa">
+              WhatsApp
+              <input type="text" id="reg-wa" x-model="regForm.whatsapp" required>
+            </label>
+            <label for="reg-banda">
+              Nome da Banda
+              <input type="text" id="reg-banda" x-model="regForm.banda" required>
+            </label>
+            <button type="submit">Cadastrar & Selecionar</button>
+          </form>
+        </div>
+      </div>
+    </template>
+
   </main>
 
+  <script type="module">
+    import { getBookings, createBooking } from './supabase.js';
+
+    window.buildDatePicker = function() {};
+    window.renderHoursGrid = async function() {
+      try {
+        return await getBookings();
+      } catch (e) {
+        console.error("renderHoursGrid error:", e);
+      }
+    };
+    window.selectDate = function(d) {};
+    window.submitBooking = async function(data) {
+      return await createBooking(data);
+    };
+  </script>
+
+  <script src="./js/paginas/agenda.js" type="module"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </body>
 </html>
