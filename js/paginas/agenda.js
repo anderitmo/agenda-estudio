@@ -267,7 +267,7 @@ const controller = function() {
           return;
         }
 
-        this.bandasDoCliente = bandsList.map(b => b.bandas);
+        this.bandasDoCliente = (bandsList || []).map(b => b.bandas).filter(Boolean);
         if (this.bandasDoCliente.length === 1) {
           // Pre-select if only 1 band
           this.reservaForm.bandaId = this.bandasDoCliente[0].id;
